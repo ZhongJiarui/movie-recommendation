@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}心情影院 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main mood-page">
+
+    <div class="section-header">
+        <div>
+            <h2>🎭 今晚，想看什么？</h2>
+            <p>选一种此刻的心情，我们为你配一场刚刚好的电影</p>
+        </div>
+    </div>
+
+    <!-- 心情场景卡片 -->
+    <div class="mood-grid">
+        {% for key, cfg in moods.items() %}
+        <a href="/mood?mood={{ key }}" class="mood-card {{ 'active' if mood_key == key else '' }}"
+           style="--mood-hue: {{ loop.index0 * 45 }}deg">
+            <div class="mood-emoji">{{ cfg.emoji }}</div>
+            <div class="mood-name">{{ cfg.name }}</div>
+            <div class="mood-desc">{{ cfg.desc }}</div>
+            {% if mood_key == key %}<div class="mood-active-tag">当前心情</div>{% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if current %}
+    <div class="mood-result">
+        <div class="section-header">
+            <div>
+                <h2>{{ current.emoji }} {{ current.name }} · 为你挑选</h2>
+                <p>基于「{{ current.desc }}」精心筛选的高口碑片单</p>
+            </div>
+        </div>
+        {% if movies %}
+        <div class="movie-grid">
+            {% for movie in movies %}
+            <div class="movie-card rec-card">
+                <a href="/movie/{{ movie.movieId }}">
+                    <div class="movie-poster">
+                        <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="movie-poster-fallback" style="display:none">🎬</div>
+                        {% if movie.avg_rating %}
+                        <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                        {% endif %}
+                        {% if movie.match %}
+                        <span class="match-badge">{{ movie.match }}% 匹配</span>
+                        {% endif %}
+                    </div>
+                </a>
+                <div class="movie-card-body">
+                    <h5>{{ movie.title }}</h5>
+                    {% if movie.reason %}
+                    <div class="rec-reason">✨ {{ movie.reason }}</div>
+                    {% endif %}
+                    <div class="genre-tags">
+                        {% for g in movie.genres.split('|')[:2] %}
+                        <span class="genre-tag">{{ genre_labels.get(g, g) }}</span>
+                        {% endfor %}
+                    </div>
+                    <a href="/movie/{{ movie.movieId }}" class="movie-detail-link">查看详情 →</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🎭</div>
+            <h3>暂时没有匹配的影片</h3>
+            <p>换个心情试试看</p>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="mood-hint">
+        <div class="mood-hint-icon">👆</div>
+        <p>点击上方任意一种心情，立即生成专属片单</p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

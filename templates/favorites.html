@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}我的收藏 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main">
+
+    <div class="section-header">
+        <div>
+            <h2>❤️ 我的收藏</h2>
+            <p>这里保存了你感兴趣的电影，共 {{ movies|length }} 部</p>
+        </div>
+    </div>
+
+    {% if movies %}
+    <div class="movie-grid">
+        {% for movie in movies %}
+        <div class="movie-card">
+            <a href="/movie/{{ movie.movieId }}">
+                <div class="movie-poster">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="movie-poster-fallback" style="display:none">🎬</div>
+                    {% if movie.avg_rating %}
+                    <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="movie-card-body">
+                <h5>{{ movie.title }}</h5>
+                <div class="genre-tags">
+                    {% for g in movie.genres.split('|')[:2] %}
+                    <span class="genre-tag">{{ genre_labels.get(g, g) }}</span>
+                    {% endfor %}
+                </div>
+                <div class="fav-actions">
+                    <a href="/movie/{{ movie.movieId }}" class="btn btn-sm btn-primary">查看</a>
+                    <form action="/favorite/remove/{{ movie.movieId }}" method="post">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">取消收藏</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🤍</div>
+        <h3>还没有收藏任何电影</h3>
+        <p>浏览电影，点亮那颗心，把喜欢的作品收进这里。</p>
+        <a href="/movies" class="btn btn-primary">去发现电影</a>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

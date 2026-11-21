@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}观影报告 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main report-page">
+
+    {% if empty %}
+    <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <h3>还没有足够的数据生成报告</h3>
+        <p>{{ username }}，先给几部电影评分吧，你的专属观影报告正在等你</p>
+        <a href="/movies" class="btn btn-primary">去发现电影</a>
+    </div>
+    {% else %}
+
+    <div class="report-share-card" id="reportCard">
+        <div class="report-glow report-glow-1"></div>
+        <div class="report-glow report-glow-2"></div>
+
+        <div class="report-head">
+            <div class="report-brand">🎬 MovieRec · 年度观影报告</div>
+            <div class="report-user">{{ username }} 的观影档案</div>
+        </div>
+
+        <div class="report-hero">
+            <div class="report-hero-main">
+                <span class="rh-num">{{ rated_count }}</span>
+                <span class="rh-unit">部电影</span>
+                <div class="rh-caption">这一年，你认真看过的光影</div>
+            </div>
+            <div class="report-keywords">
+                {% for kw in keywords %}
+                <span class="report-kw">#{{ kw }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 数据指标 -->
+        <div class="report-metrics">
+            <div class="report-metric">
+                <div class="rm-num">{{ avg_score }}</div>
+                <div class="rm-label">平均评分</div>
+            </div>
+            <div class="report-metric">
+                <div class="rm-num">{{ fav_count }}</div>
+                <div class="rm-label">心动收藏</div>
+            </div>
+            <div class="report-metric">
+                <div class="rm-num">{{ dislike_count }}</div>
+                <div class="rm-label">果断避雷</div>
+            </div>
+        </div>
+
+        <!-- 口味 DNA 雷达 -->
+        <div class="report-section">
+            <h3>🧬 你的口味 DNA</h3>
+            <div class="report-dna-wrap">
+                <canvas id="reportRadar" width="300" height="300"></canvas>
+                <div class="report-dna-labels">
+                    {% for name, value in dna %}
+                    <div class="rdna-row">
+                        <span class="rdna-name">{{ name }}</span>
+                        <div class="rdna-bar"><div class="rdna-fill" style="width: {{ value }}%"></div></div>
+                        <span class="rdna-val">{{ value }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 评分分布 -->
+        <div class="report-section">
+            <h3>⭐ 你的打分习惯</h3>
+            <div class="report-dist">
+                {% for star in [5,4,3,2,1] %}
+                <div class="rd-row">
+                    <span class="rd-star">{{ star }}★</span>
+                    <div class="rd-bar">
+                        <div class="rd-fill" style="width: {{ (dist[star] / rated_count * 100)|round|int }}%"></div>
+                    </div>
+                    <span class="rd-count">{{ dist[star] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="report-note">
+                {% set generous = dist[5] + dist[4] %}
+                {% if generous / rated_count > 0.6 %}
+                你是个温柔的影迷，总是愿意给好作品多一点鼓励 ✨
+                {% elif dist[3] / rated_count > 0.4 %}
+                你打分很克制，3 分是你的「还行」通行证 🤔
+                {% else %}
+                你对电影有自己的标准，好片烂片都逃不过你的眼睛 🔍
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- 年度最佳 -->
+        {% if top_list %}
+        <div class="report-section">
+            <h3>🏆 你心中的年度佳片</h3>
+            <div class="report-top-list">
+                {% for item in top_list %}
+                <a href="/movie/{{ item.movie_id }}" class="report-top-item">
+                    <img src="{{ item.poster }}" alt="{{ item.title }}" loading="lazy">
+                    <div class="rti-info">
+                        <div class="rti-title">{{ item.title }}</div>
+                        <div class="rti-score">你的评分 <span>★ {{ item.rating }}</span></div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="report-footer">用热爱与算法，记录你的每一帧光影 · MovieRec</div>
+    </div>
+
+    <div class="report-actions">
+        <a href="/profile" class="btn btn-outline">← 返回个人中心</a>
+        <button onclick="window.print()" class="btn btn-primary">🖨️ 保存为图片 / PDF</button>
+        <a href="/recommend" class="btn btn-outline">看更多推荐 →</a>
+    </div>
+
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var canvas = document.getElementById('reportRadar');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var values = {{ dna | tojson }};
+    var labels = values.map(function (v) { return v[0]; });
+    var data = values.map(function (v) { return v[1] / 100; });
+    var n = data.length, cx = 150, cy = 150, R = 108;
+
+    function point(i, ratio) {
+        var a = -Math.PI / 2 + i * 2 * Math.PI / n;
+        return [cx + Math.cos(a) * R * ratio, cy + Math.sin(a) * R * ratio];
+    }
+    // 网格
+    [0.25, 0.5, 0.75, 1].forEach(function (level) {
+        ctx.beginPath();
+        for (var i = 0; i < n; i++) {
+            var p = point(i, level);
+            if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(185, 140, 255, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    });
+    // 轴线 + 标签
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#b98cff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (var i = 0; i < n; i++) {
+        var edge = point(i, 1);
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(edge[0], edge[1]);
+        ctx.strokeStyle = 'rgba(185, 140, 255, 0.15)'; ctx.stroke();
+        var lp = point(i, 1.22);
+        ctx.fillText(labels[i], lp[0], lp[1]);
+    }
+    // 数据区域
+    ctx.beginPath();
+    for (var i = 0; i < n; i++) {
+        var p = point(i, Math.max(data[i], 0.02));
+        if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(139, 108, 240, 0.35)';
+    ctx.fill();
+    ctx.strokeStyle = '#b98cff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 数据点
+    for (var i = 0; i < n; i++) {
+        var p = point(i, Math.max(data[i], 0.02));
+        ctx.beginPath(); ctx.arc(p[0], p[1], 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#f5c46b'; ctx.fill();
+    }
+})();
+</script>
+{% endblock %}

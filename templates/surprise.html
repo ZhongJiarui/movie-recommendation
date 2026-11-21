@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}惊喜盲盒 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main surprise-page">
+
+    <div class="surprise-hero">
+        <div class="surprise-box">🎁</div>
+        <div>
+            <h2>惊喜盲盒</h2>
+            <p>从高分中长尾佳片里随机抽取，跳出信息茧房，遇见意料之外的心动</p>
+        </div>
+    </div>
+
+    <!-- 手气控制栏 -->
+    <div class="surprise-controls">
+        <a href="/surprise?seed={{ range(1, 99999) | random }}" class="btn-shuffle">
+            <span>🎲</span> 换一手气
+        </a>
+        <span class="surprise-seed">本手编号 #{{ seed or 'random' }}</span>
+    </div>
+
+    <!-- 心情微调（可选） -->
+    <div class="surprise-moods">
+        <span class="sm-label">想要一点倾向：</span>
+        <a href="/surprise?seed={{ range(1, 99999) | random }}" class="sm-chip {{ 'active' if not mood else '' }}">完全随机</a>
+        {% for key, cfg in moods.items() %}
+        <a href="/surprise?mood={{ key }}&seed={{ range(1, 99999) | random }}" class="sm-chip {{ 'active' if mood == key else '' }}">{{ cfg.emoji }} {{ cfg.name }}</a>
+        {% endfor %}
+    </div>
+
+    {% if movies %}
+    <div class="movie-grid surprise-grid">
+        {% for movie in movies %}
+        <div class="movie-card rec-card surprise-card" style="--card-delay: {{ loop.index0 * 0.06 }}s">
+            <a href="/movie/{{ movie.movieId }}">
+                <div class="movie-poster">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="movie-poster-fallback" style="display:none">🎬</div>
+                    {% if movie.avg_rating %}
+                    <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="movie-card-body">
+                <h5>{{ movie.title }}</h5>
+                {% if movie.reason %}
+                <div class="rec-reason">✨ {{ movie.reason }}</div>
+                {% endif %}
+                <div class="genre-tags">
+                    {% for g in movie.genres.split('|')[:2] %}
+                    <span class="genre-tag">{{ genre_labels.get(g, g) }}</span>
+                    {% endfor %}
+                </div>
+                <a href="/movie/{{ movie.movieId }}" class="movie-detail-link">查看详情 →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

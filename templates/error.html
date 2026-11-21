@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ code }} - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main">
+    <div class="empty-state">
+        <div class="error-code">{{ code }}</div>
+        <h3 style="margin-top: 16px;">{{ message }}</h3>
+        <p>别担心，好电影还在等你。</p>
+        <a href="/" class="btn btn-primary">返回首页</a>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,18 @@
+# 密钥与本地数据
+.env
+movie.db
+
+# Python 虚拟环境与缓存
+.venv/
+__pycache__/
+*.pyc
+
+# 本地备份与工作笔记
+.backup_original/
+.workbuddy/
+
+# 发布平台标记文件
+*.genie
+
+# 本地海报调试缓存（正式海报走 TMDB CDN）
+static/posters/

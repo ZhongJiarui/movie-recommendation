@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="detail-wrap">
+
+    <!-- 沉浸横幅背景 -->
+    {% if movie.backdrop %}
+    <div class="detail-backdrop" style="background-image: url('{{ movie.backdrop }}')"></div>
+    {% endif %}
+
+    <div class="container-main detail-container">
+        <div class="detail-card">
+
+            <!-- 左侧：完整海报 -->
+            <div class="detail-poster-col">
+                <div class="detail-poster-frame">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="detail-poster-empty" style="display:none">🎬</div>
+                </div>
+                {% if movie.tmdb_rating %}
+                <div class="poster-score">
+                    <span class="score-star">★</span>
+                    <span class="score-num">{{ "%.1f"|format(movie.tmdb_rating) }}</span>
+                    <span class="score-label">TMDB 评分</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- 右侧：影片信息 -->
+            <div class="detail-info">
+                <div class="detail-kicker">🎬 影片详情</div>
+                <h1>{{ movie.title }}</h1>
+
+                <div class="detail-meta">
+                    {% if movie.release_date %}
+                    <span class="meta-chip">📅 {{ movie.release_date }}</span>
+                    {% endif %}
+                    {% if movie.avg_rating %}
+                    <span class="meta-chip chip-gold">⭐ {{ movie.avg_rating }} 分</span>
+                    {% endif %}
+                    {% if movie.rating_count %}
+                    <span class="meta-chip">👥 {{ movie.rating_count }} 人评分</span>
+                    {% endif %}
+                </div>
+
+                <div class="detail-genres">
+                    {% for g in movie.genres.split('|') %}
+                    <span class="genre-tag">{{ genre_labels.get(g, g) }}</span>
+                    {% endfor %}
+                </div>
+
+                {% if movie.overview %}
+                <div class="movie-overview">
+                    <h5>剧情简介 <span class="overview-source">· 来自 TMDB</span></h5>
+                    <p class="overview-text collapsed" id="overviewText">{{ movie.overview }}</p>
+                    {% if movie.overview|length > 110 %}
+                    <button type="button" class="overview-toggle" id="overviewToggle" onclick="toggleOverview()">展开全文 ▾</button>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="movie-overview overview-empty">
+                    <h5>剧情简介</h5>
+                    <p>这部影片的简介正在补充中，运行 <code>fetch_posters.py</code> 抓取脚本后会自动显示。</p>
+                </div>
+                {% endif %}
+
+                <!-- 评分分布可视化 -->
+                {% if rating_dist and (rating_dist.values()|sum) > 0 %}
+                <div class="rating-distribution">
+                    <h5>📊 影迷评分分布 <span>· 共 {{ rating_dist.values()|sum }} 人评分</span></h5>
+                    {% set max_count = rating_dist.values()|max or 1 %}
+                    {% for star in [5, 4, 3, 2, 1] %}
+                    <div class="dist-row">
+                        <span class="dist-star">{{ star }}★</span>
+                        <div class="dist-bar">
+                            <div class="dist-fill" style="width: {{ (rating_dist[star] / max_count * 100)|round|int }}%"></div>
+                        </div>
+                        <span class="dist-count">{{ rating_dist[star] }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- 互动区 -->
+                {% if session.get("user_id") %}
+                <div class="detail-actions-v2">
+                    <form action="/rate/{{ movie.movieId }}" method="post" class="rate-form" id="rateForm">
+                        <div class="rate-heading">
+                            <span class="rate-icon">⭐</span>
+                            <span>{{ '更新你的评分' if movie.user_rating else '为这部电影打分' }}</span>
+                        </div>
+                        <div class="rate-row">
+                            <div class="rating-stars-v2">
+                                {% for n in range(1, 6) %}
+                                <input type="radio" id="star{{ n }}" name="rating" value="{{ n }}"
+                                       {% if movie.user_rating and movie.user_rating|int == n %}checked{% endif %}>
+                                <label for="star{{ n }}" title="{{ n }} 星" data-value="{{ n }}">★</label>
+                                {% endfor %}
+                            </div>
+                            <span class="rate-hint" id="rateHint">
+                                {% if movie.user_rating %}你打了 {{ movie.user_rating|int }} 星{% else %}点击星星评分{% endif %}
+                            </span>
+                            <button class="btn-rate" type="submit">
+                                {{ '更新评分' if movie.user_rating else '提交评分' }}
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if movie.is_favorite %}
+                    <form action="/favorite/remove/{{ movie.movieId }}" method="post">
+                        <button class="btn-favorite is-fav" type="submit">
+                            <span class="fav-heart">♥</span> 已收藏 · 点击取消
+                        </button>
+                    </form>
+                    {% else %}
+                    <form action="/favorite/{{ movie.movieId }}" method="post">
+                        <button class="btn-favorite" type="submit">
+                            <span class="fav-heart">♡</span> 加入收藏
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {% if movie.is_disliked %}
+                    <form action="/dislike/remove/{{ movie.movieId }}" method="post">
+                        <button class="btn-dislike is-marked" type="submit" title="点击撤销">
+                            <span>🚫</span> 已标不感兴趣
+                        </button>
+                    </form>
+                    {% else %}
+                    <form action="/dislike/{{ movie.movieId }}" method="post">
+                        <button class="btn-dislike" type="submit" title="减少此类推荐">
+                            <span>🚫</span> 不感兴趣
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="guest-notice-v2">
+                    <div class="guest-icon">🔒</div>
+                    <div>
+                        <strong>登录后解锁完整体验</strong>
+                        <p>评分、收藏与个性化推荐功能需要登录后使用。</p>
+                    </div>
+                    <a href="/login" class="btn-login-inline">立即登录 →</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 相似推荐 -->
+        <div class="section-header">
+            <div>
+                <h2>🎯 相似电影推荐</h2>
+                <p>根据你的观影偏好与类型相似度为你挑选</p>
+            </div>
+        </div>
+
+        {% if recommendations %}
+        <div class="movie-grid">
+            {% for item in recommendations %}
+            <div class="movie-card">
+                <a href="/movie/{{ item.movieId }}">
+                    <div class="movie-poster">
+                        <img src="{{ item.poster }}" alt="{{ item.title }}" loading="lazy"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="movie-poster-fallback" style="display:none">🎬</div>
+                        {% if item.avg_rating %}
+                        <span class="rating-badge">⭐ {{ item.avg_rating }}</span>
+                        {% endif %}
+                    </div>
+                </a>
+                <div class="movie-card-body">
+                    <h5>{{ item.title }}</h5>
+                    {% if item.reason %}
+                    <div class="rec-reason">✨ {{ item.reason }}</div>
+                    {% endif %}
+                    <div class="genre-tags">
+                        {% for g in item.genres.split('|')[:2] %}
+                        <span class="genre-tag">{{ genre_labels.get(g, g) }}</span>
+                        {% endfor %}
+                    </div>
+                    <a href="/movie/{{ item.movieId }}" class="movie-detail-link">查看详情 →</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// 星级评分交互：悬停预览 + 点击回显文字
+(function () {
+    const form = document.getElementById('rateForm');
+    if (!form) return;
+    const labels = form.querySelectorAll('.rating-stars-v2 label');
+    const hint = document.getElementById('rateHint');
+    const words = ['', '很差', '较差', '一般', '推荐', '力荐'];
+
+    function paint(value) {
+        labels.forEach(function (label) {
+            label.classList.toggle('lit', Number(label.dataset.value) <= value);
+        });
+    }
+
+    // 初始：高亮已评分
+    const checked = form.querySelector('input[name="rating"]:checked');
+    if (checked) paint(Number(checked.value));
+
+    labels.forEach(function (label) {
+        const value = Number(label.dataset.value);
+        label.addEventListener('mouseenter', function () {
+            paint(value);
+            if (hint) hint.textContent = value + ' 星 · ' + words[value];
+        });
+        label.addEventListener('click', function () {
+            if (hint) hint.textContent = '已选择 ' + value + ' 星 · ' + words[value];
+        });
+    });
+    form.querySelector('.rating-stars-v2').addEventListener('mouseleave', function () {
+        const c = form.querySelector('input[name="rating"]:checked');
+        if (c) {
+            paint(Number(c.value));
+            if (hint) hint.textContent = '你打了 ' + c.value + ' 星';
+        } else {
+            paint(0);
+            if (hint) hint.textContent = '点击星星评分';
+        }
+    });
+})();
+
+// 剧情简介展开/收起
+function toggleOverview() {
+    var text = document.getElementById('overviewText');
+    var btn = document.getElementById('overviewToggle');
+    if (!text || !btn) return;
+    var collapsed = text.classList.toggle('collapsed');
+    btn.textContent = collapsed ? '展开全文 ▾' : '收起 ▲';
+}
+</script>
+
+{% endblock %}

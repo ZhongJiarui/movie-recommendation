@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}AI 推荐助手 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main chat-page">
+    <div class="chat-intro">
+        <div class="chat-intro-icon">🤖</div>
+        <div class="chat-intro-text">
+            <h2>和小影聊聊你想看什么</h2>
+            <p>说心情、说感觉、说一部喜欢的电影都行。我不是关键词搜索机，会尽量听懂你话里的意思～</p>
+        </div>
+        <div class="chat-intro-meta">
+            <span class="ai-mode-badge {{ 'is-llm' if ai_status.enabled else 'is-local' }}"
+                  title="{{ ai_status.reason or ('已接入 ' ~ ai_status.provider ~ ' · ' ~ ai_status.model) }}">
+                <span class="mode-dot"></span>
+                {{ '大模型增强' if ai_status.enabled else '本地智能引擎' }}
+            </span>
+            <button type="button" class="chat-reset-btn" id="chatReset" title="清空对话重新开始">↻ 新对话</button>
+        </div>
+    </div>
+
+    <div class="chat-shell">
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg bot">
+                <div class="chat-avatar">🤖</div>
+                <div class="chat-bubble">
+                    <p>嗨，我是小影 👋 你在这儿唯一不会嫌你"选择困难"的观影搭子。</p>
+                    <p>不用凑关键词，怎么舒服怎么说——「今晚想笑一场」「像星际穿越但别那么烧脑」「来点 90 年代的老片」都行。我会一边聊一边记住你的口味。</p>
+                    <div class="chat-suggestions" id="chatSuggestions">
+                        <button type="button" data-q="想看像星际穿越那样的科幻片">🚀 像星际穿越的科幻片</button>
+                        <button type="button" data-q="今晚想笑一场，来点轻松的喜剧">😂 今晚想笑一场</button>
+                        <button type="button" data-q="有没有烧脑悬疑的高分电影">🧠 烧脑悬疑高分</button>
+                        <button type="button" data-q="浪漫爱情片，适合两个人一起看">💜 浪漫爱情片</button>
+                        <button type="button" data-q="你是谁">👋 先认识一下</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-quick-replies" id="chatQuickReplies"></div>
+
+        <form class="chat-input-bar" id="chatForm" autocomplete="off">
+            <input type="text" id="chatInput" placeholder="和小影说点什么…（回车发送）" maxlength="150">
+            <button type="submit" id="chatSend">发送 ➤</button>
+        </form>
+    </div>
+    <p class="chat-footnote">小影会记住这轮对话里的偏好，点「新对话」即可清空重来。</p>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var form = document.getElementById('chatForm');
+    var input = document.getElementById('chatInput');
+    var sendBtn = document.getElementById('chatSend');
+    var messages = document.getElementById('chatMessages');
+    var quickReplies = document.getElementById('chatQuickReplies');
+    var resetBtn = document.getElementById('chatReset');
+    var busy = false;
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
+
+    function scrollBottom() {
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addUser(text) {
+        var el = document.createElement('div');
+        el.className = 'chat-msg user';
+        el.innerHTML = '<div class="chat-bubble">' + esc(text) + '</div><div class="chat-avatar">🙂</div>';
+        messages.appendChild(el);
+        scrollBottom();
+    }
+
+    function addThinking() {
+        var el = document.createElement('div');
+        el.className = 'chat-msg bot';
+        el.id = 'chatThinking';
+        el.innerHTML = '<div class="chat-avatar">🤖</div>' +
+            '<div class="chat-bubble chat-thinking">' +
+            '<span class="thinking-label">小影正在想</span>' +
+            '<span></span><span></span><span></span></div>';
+        messages.appendChild(el);
+        scrollBottom();
+        return el;
+    }
+
+    function renderQuickReplies(list) {
+        quickReplies.innerHTML = '';
+        if (!list || !list.length) return;
+        list.forEach(function (text) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'quick-reply-chip';
+            btn.textContent = text;
+            btn.addEventListener('click', function () { ask(text); });
+            quickReplies.appendChild(btn);
+        });
+    }
+
+    function addResult(data) {
+        var el = document.createElement('div');
+        el.className = 'chat-msg bot';
+        var html = '<div class="chat-avatar">🤖</div><div class="chat-bubble chat-result">';
+
+        // 回复文本
+        if (data.reply) {
+            html += '<p class="chat-reply">' + esc(data.reply) + '</p>';
+        }
+
+        var movies = data.movies || [];
+        if (movies.length) {
+            if (data.summary) {
+                html += '<div class="chat-summary-line">🎯 ' + esc(data.summary) + '</div>';
+            }
+            var tags = (data.tags || []).map(function (t) {
+                return '<span class="chat-tag">' + esc(t) + '</span>';
+            }).join('');
+            if (tags) html += '<div class="chat-tags">' + tags + '</div>';
+
+            var cards = movies.map(function (m, i) {
+                var poster = m.poster
+                    ? '<img src="' + esc(m.poster) + '" alt="" loading="lazy">'
+                    : '<div class="chat-poster-fallback">🎬</div>';
+                var rating = m.rating ? '<span class="chat-card-rating">★ ' + esc(m.rating) + '</span>' : '';
+                var year = m.year ? '<span>' + esc(m.year) + '</span> ' : '';
+                return '<a class="chat-movie" href="/movie/' + m.id + '" style="--d:' + (i * 0.04) + 's">' +
+                    '<div class="chat-poster">' + poster + '</div>' +
+                    '<div class="chat-card-body">' +
+                        '<div class="chat-card-title">' + esc(m.title) + '</div>' +
+                        '<div class="chat-card-meta">' + year + rating + '</div>' +
+                        (m.reason ? '<div class="chat-card-reason">✨ ' + esc(m.reason) + '</div>' : '') +
+                    '</div></a>';
+            }).join('');
+            html += '<div class="chat-movie-list">' + cards + '</div>';
+        }
+
+        if (data.mode === 'llm') {
+            html += '<div class="chat-mode-note">✨ 本条回复由大模型润色</div>';
+        }
+        html += '</div>';
+        el.innerHTML = html;
+        messages.appendChild(el);
+        renderQuickReplies(data.suggestions);
+        scrollBottom();
+    }
+
+    function addError(msg) {
+        var el = document.createElement('div');
+        el.className = 'chat-msg bot';
+        el.innerHTML = '<div class="chat-avatar">🤖</div>' +
+            '<div class="chat-bubble"><p>' + esc(msg) + '</p></div>';
+        messages.appendChild(el);
+        scrollBottom();
+    }
+
+    function ask(q) {
+        q = (q || '').trim();
+        if (!q || busy) return;
+        busy = true;
+        sendBtn.disabled = true;
+        input.disabled = true;
+        var suggest = document.getElementById('chatSuggestions');
+        if (suggest) suggest.remove();
+        renderQuickReplies([]);
+
+        addUser(q);
+        input.value = '';
+        var thinking = addThinking();
+
+        fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({query: q})
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (thinking.parentNode) thinking.parentNode.removeChild(thinking);
+            if (data.ok) addResult(data); else addError(data.error || '出了点问题，再试一次吧');
+        })
+        .catch(function () {
+            if (thinking.parentNode) thinking.parentNode.removeChild(thinking);
+            addError('网络似乎开小差了，请重试');
+        })
+        .finally(function () {
+            busy = false;
+            sendBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        });
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        ask(input.value);
+    });
+
+    var suggestBox = document.getElementById('chatSuggestions');
+    if (suggestBox) {
+        suggestBox.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-q]');
+            if (btn) ask(btn.getAttribute('data-q'));
+        });
+    }
+
+    resetBtn.addEventListener('click', function () {
+        if (busy) return;
+        fetch('/api/chat/reset', {method: 'POST'})
+        .then(function () {
+            messages.innerHTML = '';
+            renderQuickReplies([]);
+            var welcome = document.createElement('div');
+            welcome.className = 'chat-msg bot';
+            welcome.innerHTML = '<div class="chat-avatar">🤖</div>' +
+                '<div class="chat-bubble"><p>好啦，刚才聊的都清空了～我们重新来过。这次想看点什么？</p>' +
+                '<div class="chat-suggestions">' +
+                '<button type="button" data-q="想看像星际穿越那样的科幻片">🚀 星际穿越同款</button>' +
+                '<button type="button" data-q="今晚想笑一场">😂 今晚想笑一场</button>' +
+                '<button type="button" data-q="有没有烧脑悬疑的高分电影">🧠 烧脑悬疑</button>' +
+                '</div></div>';
+            messages.appendChild(welcome);
+            welcome.querySelector('.chat-suggestions').addEventListener('click', function (e) {
+                var btn = e.target.closest('button[data-q]');
+                if (btn) ask(btn.getAttribute('data-q'));
+            });
+            scrollBottom();
+            input.focus();
+        });
+    });
+
+    input.focus();
+})();
+</script>
+{% endblock %}

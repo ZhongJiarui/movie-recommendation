@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}个人中心 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main profile-page">
+
+    <div class="section-header">
+        <div>
+            <h2>👤 个人中心</h2>
+            <p>你的观影足迹与品味画像</p>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="profile-stats">
+        <div class="stat-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-num">{{ rated_count }}</div>
+            <div class="stat-label">已评分电影</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-num">{{ avg_score or '—' }}</div>
+            <div class="stat-label">平均评分</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">❤️</div>
+            <div class="stat-num">{{ fav_count }}</div>
+            <div class="stat-label">收藏电影</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🎬</div>
+            <div class="stat-num">{{ top_genres|length }}</div>
+            <div class="stat-label">偏好类型</div>
+        </div>
+    </div>
+
+    <!-- 口味画像总结 -->
+    <div class="taste-card">
+        <div class="taste-glow"></div>
+        <div class="taste-content">
+            <div class="taste-badge">🧬 你的观影口味画像</div>
+            <h3>{{ taste_title }}</h3>
+            <p>{{ taste_desc }}</p>
+            <div class="taste-progress">
+                <div class="taste-progress-head">
+                    <span>推荐精准度</span>
+                    <span>{{ coverage }}%</span>
+                </div>
+                <div class="taste-progress-track">
+                    <div class="taste-progress-fill" style="width: {{ coverage }}%"></div>
+                </div>
+                <small>多评分、多收藏、标记「不感兴趣」，都能帮助算法更懂你</small>
+            </div>
+        </div>
+        <div class="taste-avatar">🎬</div>
+    </div>
+
+    <div class="profile-grid">
+
+        <!-- 口味 DNA 雷达图 -->
+        <div class="profile-panel">
+            <h3>🧬 口味 DNA</h3>
+            {% if rated_count %}
+            <div class="dna-radar-wrap">
+                <canvas id="profileRadar" width="280" height="280"></canvas>
+            </div>
+            <p class="panel-note">六维口味指纹，由你的评分与收藏共同绘制</p>
+            {% else %}
+            <div class="pref-empty">多给几部电影评分，就能生成你的专属口味 DNA</div>
+            {% endif %}
+        </div>
+
+        <!-- 快捷操作 -->
+        <div class="profile-panel">
+            <h3>⚡ 快捷入口</h3>
+            <div class="profile-links">
+                <a href="/recommend">
+                    <span class="pl-icon">🎯</span>
+                    <span class="pl-text"><strong>智能推荐</strong><small>根据你的品味生成专属片单</small></span>
+                    <span class="pl-arrow">→</span>
+                </a>
+                <a href="/favorites">
+                    <span class="pl-icon">❤️</span>
+                    <span class="pl-text"><strong>我的收藏</strong><small>查看你收藏的 {{ fav_count }} 部电影</small></span>
+                    <span class="pl-arrow">→</span>
+                </a>
+                <a href="/movies">
+                    <span class="pl-icon">🎞️</span>
+                    <span class="pl-text"><strong>逛电影库</strong><small>继续发现更多好电影</small></span>
+                    <span class="pl-arrow">→</span>
+                </a>
+                <a href="/mood">
+                    <span class="pl-icon">🎭</span>
+                    <span class="pl-text"><strong>心情影院</strong><small>按此刻的心情配一场电影</small></span>
+                    <span class="pl-arrow">→</span>
+                </a>
+                <a href="/surprise">
+                    <span class="pl-icon">🎁</span>
+                    <span class="pl-text"><strong>惊喜盲盒</strong><small>随机抽取高分冷门好片</small></span>
+                    <span class="pl-arrow">→</span>
+                </a>
+                <a href="/report">
+                    <span class="pl-icon">📊</span>
+                    <span class="pl-text"><strong>观影报告</strong><small>查看你的专属年度观影档案</small></span>
+                    <span class="pl-arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 口味 DNA 演化动画 -->
+    {% if dna_timeline and dna_timeline|length >= 2 %}
+    <div class="dna-evo-panel">
+        <div class="dna-evo-head">
+            <div>
+                <h3>🎞️ 口味进化史</h3>
+                <p>随着评分积累，你的口味指纹是如何一步步长成现在这样的</p>
+            </div>
+            <div class="dna-evo-controls">
+                <button type="button" id="dnaPlay" class="dna-evo-btn">▶ 播放演化</button>
+                <span class="dna-evo-counter" id="dnaCounter">第 1 / {{ dna_timeline|length }} 阶</span>
+            </div>
+        </div>
+        <div class="dna-evo-body">
+            <canvas id="dnaEvoRadar" width="300" height="300"></canvas>
+            <div class="dna-evo-side">
+                <div class="dna-evo-stage" id="dnaStageLabel">{{ dna_timeline[0].label }}</div>
+                <div class="dna-evo-track" id="dnaTrack">
+                    {% for step in dna_timeline %}
+                    <button type="button" class="dna-evo-dot {{ 'active' if loop.first else '' }}"
+                            data-idx="{{ loop.index0 }}" title="{{ step.label }}"></button>
+                    {% endfor %}
+                </div>
+                <p class="dna-evo-note">每一阶代表你评分积累到一个新阶段时的口味画像。点击圆点或播放，看看偏好如何漂移。</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 同好也在看 -->
+    {% if social %}
+    <div class="section-header history-head">
+        <div>
+            <h3>👥 和你品味相似的人也在看</h3>
+            <p>从影迷中找到与你口味相近的同好，看看他们的高分私藏</p>
+        </div>
+    </div>
+    <div class="movie-grid">
+        {% for movie in social %}
+        <div class="movie-item rec-card">
+            <a href="/movie/{{ movie.movieId }}">
+                <div class="poster">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="poster-fallback" style="display:none">🎬</div>
+                    {% if movie.avg_rating %}
+                    <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            <h3>{{ movie.title }}</h3>
+            {% if movie.reason %}<div class="rec-reason">✨ {{ movie.reason }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 评分历史 -->
+    <div class="section-header history-head">
+        <div>
+            <h3>📝 最近评分</h3>
+            <p>你评分过的电影（最多展示 12 部）</p>
+        </div>
+    </div>
+    {% if history %}
+    <div class="history-list">
+        {% for h in history %}
+        <a class="history-item" href="/movie/{{ h.movie_id }}">
+            <img src="{{ h.poster }}" alt="{{ h.title }}" loading="lazy">
+            <div class="hi-info">
+                <div class="hi-title">{{ h.title }}</div>
+                <div class="hi-meta">你的评分：<span class="hi-score">★ {{ h.rating }}</span>
+                    {% if h.is_favorite %}<span class="hi-fav">♥ 已收藏</span>{% endif %}
+                </div>
+            </div>
+            <span class="hi-arrow">→</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">⭐</div>
+        <h3>还没有评分记录</h3>
+        <p>去给喜欢的电影打分，开启你的专属推荐之旅</p>
+        <a href="/movies" class="btn btn-primary">去发现电影</a>
+    </div>
+    {% endif %}
+
+    <!-- 推荐算法说明 -->
+    <div class="algo-explain">
+        <h3>🧠 推荐是如何生成的？</h3>
+        <div class="algo-explain-grid">
+            <div class="algo-step">
+                <div class="algo-step-icon">🔍</div>
+                <div><strong>多路召回</strong><p>从类型相似度、协同过滤、高分口碑等多个角度寻找候选影片</p></div>
+            </div>
+            <div class="algo-step">
+                <div class="algo-step-icon">⚖️</div>
+                <div><strong>智能融合</strong><p>结合你的评分、收藏与口味画像加权打分，低分影片作为反向信号</p></div>
+            </div>
+            <div class="algo-step">
+                <div class="algo-step-icon">🌈</div>
+                <div><strong>多样性重排</strong><p>避免片单同质化，让不同类型的好电影都有机会出现</p></div>
+            </div>
+            <div class="algo-step">
+                <div class="algo-step-icon">🔄</div>
+                <div><strong>持续学习</strong><p>你的每次评分、收藏与「不感兴趣」都会实时影响下一次推荐</p></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var canvas = document.getElementById('profileRadar');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var values = {{ dna | tojson }};
+    var labels = values.map(function (v) { return v[0]; });
+    var data = values.map(function (v) { return v[1] / 100; });
+    var n = data.length, cx = 140, cy = 140, R = 96;
+    function point(i, ratio) {
+        var a = -Math.PI / 2 + i * 2 * Math.PI / n;
+        return [cx + Math.cos(a) * R * ratio, cy + Math.sin(a) * R * ratio];
+    }
+    [0.25, 0.5, 0.75, 1].forEach(function (level) {
+        ctx.beginPath();
+        for (var i = 0; i < n; i++) {
+            var p = point(i, level);
+            if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(185, 140, 255, 0.18)';
+        ctx.stroke();
+    });
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#b98cff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (var i = 0; i < n; i++) {
+        var edge = point(i, 1);
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(edge[0], edge[1]);
+        ctx.strokeStyle = 'rgba(185, 140, 255, 0.15)'; ctx.stroke();
+        var lp = point(i, 1.22);
+        ctx.fillText(labels[i], lp[0], lp[1]);
+    }
+    ctx.beginPath();
+    for (var i = 0; i < n; i++) {
+        var p = point(i, Math.max(data[i], 0.02));
+        if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(139, 108, 240, 0.35)'; ctx.fill();
+    ctx.strokeStyle = '#b98cff'; ctx.lineWidth = 2; ctx.stroke();
+    for (var i = 0; i < n; i++) {
+        var p = point(i, Math.max(data[i], 0.02));
+        ctx.beginPath(); ctx.arc(p[0], p[1], 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#f5c46b'; ctx.fill();
+    }
+})();
+
+// 口味 DNA 演化动画：在各阶段雷达形态之间平滑插值
+(function () {
+    var canvas = document.getElementById('dnaEvoRadar');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var timeline = {{ dna_timeline | tojson }};
+    var labels = {{ dna_labels | tojson }};
+    if (!timeline || timeline.length < 2) return;
+
+    var frames = timeline.map(function (step) {
+        return step.dna.map(function (v) { return v[1] / 100; });
+    });
+    var stageLabels = timeline.map(function (s) { return s.label; });
+    var n = frames[0].length, cx = 150, cy = 150, R = 100;
+    var current = frames[0].slice();
+    var target = frames[0].slice();
+    var from = frames[0].slice();
+    var progress = 1, duration = 700;
+    var playTimer = null, stage = 0;
+
+    var stageLabel = document.getElementById('dnaStageLabel');
+    var counter = document.getElementById('dnaCounter');
+    var dots = Array.prototype.slice.call(document.querySelectorAll('.dna-evo-dot'));
+    var playBtn = document.getElementById('dnaPlay');
+
+    function point(i, ratio) {
+        var a = -Math.PI / 2 + i * 2 * Math.PI / n;
+        return [cx + Math.cos(a) * R * ratio, cy + Math.sin(a) * R * ratio];
+    }
+
+    function draw(values) {
+        ctx.clearRect(0, 0, 300, 300);
+        [0.25, 0.5, 0.75, 1].forEach(function (level) {
+            ctx.beginPath();
+            for (var i = 0; i < n; i++) {
+                var p = point(i, level);
+                if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = 'rgba(185,140,255,0.16)'; ctx.stroke();
+        });
+        ctx.font = '12px sans-serif'; ctx.fillStyle = '#b98cff';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (var i = 0; i < n; i++) {
+            var edge = point(i, 1);
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(edge[0], edge[1]);
+            ctx.strokeStyle = 'rgba(185,140,255,0.12)'; ctx.stroke();
+            var lp = point(i, 1.2);
+            ctx.fillText(labels[i], lp[0], lp[1]);
+        }
+        ctx.beginPath();
+        for (var i = 0; i < n; i++) {
+            var p = point(i, Math.max(values[i], 0.02));
+            if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(139,108,240,0.32)'; ctx.fill();
+        ctx.strokeStyle = '#b98cff'; ctx.lineWidth = 2; ctx.stroke();
+        for (var i = 0; i < n; i++) {
+            var p = point(i, Math.max(values[i], 0.02));
+            ctx.beginPath(); ctx.arc(p[0], p[1], 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#f5c46b'; ctx.fill();
+        }
+    }
+
+    function ease(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+    function animate(now) {
+        if (!animate.start) animate.start = now;
+        progress = Math.min((now - animate.start) / duration, 1);
+        var e = ease(progress);
+        for (var i = 0; i < n; i++) current[i] = from[i] + (target[i] - from[i]) * e;
+        draw(current);
+        if (progress < 1) requestAnimationFrame(animate);
+    }
+
+    function goStage(idx) {
+        stage = idx;
+        from = current.slice();
+        target = frames[idx].slice();
+        animate.start = null;
+        requestAnimationFrame(animate);
+        stageLabel.textContent = stageLabels[idx];
+        counter.textContent = '第 ' + (idx + 1) + ' / ' + timeline.length + ' 阶';
+        dots.forEach(function (d, i) { d.classList.toggle('active', i === idx); });
+    }
+
+    dots.forEach(function (d) {
+        d.addEventListener('click', function () {
+            stopPlay();
+            goStage(parseInt(d.getAttribute('data-idx'), 10));
+        });
+    });
+
+    function stopPlay() {
+        if (playTimer) { clearInterval(playTimer); playTimer = null; }
+        playBtn.textContent = '▶ 播放演化';
+        playBtn.classList.remove('playing');
+    }
+
+    playBtn.addEventListener('click', function () {
+        if (playTimer) { stopPlay(); return; }
+        playBtn.textContent = '⏸ 暂停';
+        playBtn.classList.add('playing');
+        if (stage >= timeline.length - 1) goStage(0);
+        playTimer = setInterval(function () {
+            if (stage >= timeline.length - 1) { stopPlay(); return; }
+            goStage(stage + 1);
+        }, 950);
+    });
+
+    draw(current);
+})();
+</script>
+{% endblock %}

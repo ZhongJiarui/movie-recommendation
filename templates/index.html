@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}MovieRec · 发现你的下一部好电影{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+    <div class="hero-text">
+        <div class="hero-badge">今晚看什么</div>
+        <h1>发现你的<br><span class="gradient-text">下一部好电影</span></h1>
+        <p>从近万部电影里挑出你可能会喜欢的，说清楚为什么推荐，也能直接聊着找。</p>
+
+        <form action="/search" method="get" class="search-box suggest-box">
+            <input name="keyword" placeholder="搜索电影名称，如 Inception..." aria-label="搜索电影"
+                   autocomplete="off" data-suggest>
+            <button type="submit">搜索</button>
+            <div class="suggest-dropdown" data-suggest-panel></div>
+        </form>
+
+        <div class="category-list">
+            <a href="/movies?sort=popular">🔥 热门</a>
+            <a href="/movies?genre=Action">💥 动作</a>
+            <a href="/movies?genre=Sci-Fi">🚀 科幻</a>
+            <a href="/movies?genre=Romance">💜 爱情</a>
+            <a href="/movies?genre=Comedy">😂 喜剧</a>
+            <a href="/movies?genre=Animation">🎨 动画</a>
+        </div>
+    </div>
+
+    <div class="hero-image">
+        <div class="poster-stage" aria-hidden="true">
+            {% for movie in hero_movies %}
+            <a href="/movie/{{ movie.movieId }}" class="hero-poster slot-{{ loop.index }}"
+               style="--i: {{ loop.index0 }}">
+                <img src="{{ movie.poster }}" alt="{{ movie.title }}">
+                <div class="hero-poster-info">
+                    <span class="hp-rating">⭐ {{ movie.avg_rating }}</span>
+                    <span class="hp-title">{{ movie.title.split('(')[0].strip() }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        <div class="hero-orbit orbit-1"></div>
+        <div class="hero-orbit orbit-2"></div>
+        <div class="floating-card card1"><span>⭐</span> 9.5 口碑佳片</div>
+        <div class="floating-card card2"><span>🔥</span> 时下热门</div>
+        <div class="floating-card card3"><span>🎬</span> 值得一看</div>
+    </div>
+</section>
+
+{% if personal %}
+<section class="movie-section personal-section">
+    <div class="section-header">
+        <div>
+            <h2>💫 为你推荐</h2>
+            <p>根据你的评分品味精心挑选，猜你会喜欢</p>
+        </div>
+        <a href="/recommend" class="section-more">查看全部 →</a>
+    </div>
+    <div class="movie-grid">
+        {% for movie in personal %}
+        <div class="movie-item rec-card">
+            <a href="/movie/{{ movie.movieId }}">
+                <div class="poster">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="poster-fallback" style="display:none">🎬</div>
+                    {% if movie.avg_rating %}
+                    <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                    {% endif %}
+                    {% if movie.match %}
+                    <span class="match-badge">{{ movie.match }}% 匹配</span>
+                    {% endif %}
+                </div>
+            </a>
+            <h3>{{ movie.title }}</h3>
+            {% if movie.reason %}
+            <div class="rec-reason">✨ {{ movie.reason }}</div>
+            {% endif %}
+            <p>{{ movie.genres.replace('|', ' · ') }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="movie-section">
+    <div class="section-header">
+        <div>
+            <h2>🔥 热门电影</h2>
+            <p>最受影迷关注的作品，从不同角度发现好电影</p>
+        </div>
+    </div>
+
+    <div class="movie-grid">
+        {% for movie in movies %}
+        <div class="movie-item">
+            <a href="/movie/{{ movie.movieId }}">
+                <div class="poster">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="poster-fallback" style="display:none">🎬</div>
+                    {% if movie.avg_rating %}
+                    <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            <h3>{{ movie.title }}</h3>
+            <p>{{ movie.genres.replace('|', ' · ') }}</p>
+            <a href="/movie/{{ movie.movieId }}">查看详情 →</a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% endblock %}

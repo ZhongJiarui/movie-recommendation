@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}智能推荐 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="container-main">
+
+    <div class="section-header">
+        <div>
+            <h2>🎯 为你推荐</h2>
+            <p>
+                {% if rated_count %}
+                融合 {{ rated_count }} 条评分、收藏偏好与观影口味，多算法生成 · 越用越懂你
+                {% else %}
+                你还没有评分记录，先为你精选高分佳作 · 评分后推荐会更精准
+                {% endif %}
+            </p>
+        </div>
+        <div class="algo-badges">
+            <span class="algo-chip">协同过滤</span>
+            <span class="algo-chip">口味画像</span>
+            <span class="algo-chip">多样性重排</span>
+        </div>
+    </div>
+
+    {% if movies %}
+    <div class="movie-grid">
+        {% for movie in movies %}
+        <div class="movie-card rec-card">
+            <a href="/movie/{{ movie.movieId }}">
+                <div class="movie-poster">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="movie-poster-fallback" style="display:none">🎬</div>
+                    {% if movie.avg_rating %}
+                    <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                    {% endif %}
+                    {% if movie.match %}
+                    <span class="match-badge">{{ movie.match }}% 匹配</span>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="movie-card-body">
+                <h5>{{ movie.title }}</h5>
+                {% if movie.reason %}
+                <div class="rec-reason">✨ {{ movie.reason }}</div>
+                {% endif %}
+                <div class="genre-tags">
+                    {% for g in movie.genres.split('|')[:2] %}
+                    <span class="genre-tag">{{ genre_labels.get(g, g) }}</span>
+                    {% endfor %}
+                </div>
+                <div class="rec-card-foot">
+                    <a href="/movie/{{ movie.movieId }}" class="movie-detail-link">查看详情 →</a>
+                    <form action="/dislike/{{ movie.movieId }}" method="post" class="rec-dislike-form">
+                        <button class="rec-dislike-btn" type="submit" title="减少此类推荐">不感兴趣</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🎯</div>
+        <h3>暂时无法生成个性化推荐</h3>
+        <p>
+            请先为你喜欢的电影评分。<br>
+            建议至少给 3 部电影打出 4 星或 5 星，推荐会更精准。
+        </p>
+        <a href="/movies" class="btn btn-primary">去给电影评分</a>
+    </div>
+    {% endif %}
+
+    <!-- 同好也在看 -->
+    {% if social %}
+    <div class="section-header history-head" style="margin-top:44px">
+        <div>
+            <h2>👥 和你品味相似的人也在看</h2>
+            <p>从影迷中找到与你口味相近的同好，看看他们的高分私藏</p>
+        </div>
+    </div>
+    <div class="movie-grid">
+        {% for movie in social %}
+        <div class="movie-card">
+            <a href="/movie/{{ movie.movieId }}">
+                <div class="movie-poster">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="movie-poster-fallback" style="display:none">🎬</div>
+                    {% if movie.avg_rating %}
+                    <span class="rating-badge">⭐ {{ movie.avg_rating }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="movie-card-body">
+                <h5>{{ movie.title }}</h5>
+                {% if movie.reason %}<div class="rec-reason">✨ {{ movie.reason }}</div>{% endif %}
+                <div class="genre-tags">
+                    {% for g in movie.genres.split('|')[:2] %}
+                    <span class="genre-tag">{{ genre_labels.get(g, g) }}</span>
+                    {% endfor %}
+                </div>
+                <a href="/movie/{{ movie.movieId }}" class="movie-detail-link">查看详情 →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

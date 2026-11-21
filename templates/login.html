@@ -1,0 +1,85 @@
+{% extends "auth_base.html" %}
+
+{% block title %}用户登录 - MovieRec{% endblock %}
+
+{% block content %}
+
+<div class="auth-page">
+    <div class="auth-circle circle-one"></div>
+    <div class="auth-circle circle-two"></div>
+    <div class="auth-circle circle-three"></div>
+
+    <div class="login-container">
+        <!-- 左侧视觉 -->
+        <div class="login-left">
+            <div class="login-visual">
+                <!-- 氛围光晕 / 光环 / 粒子：与角色共同构成动态背景 -->
+                <div class="visual-ambient"></div>
+                <div class="visual-ring ring-outer"></div>
+                <div class="visual-ring ring-inner"></div>
+                <div class="visual-spark spark-1"></div>
+                <div class="visual-spark spark-2"></div>
+                <div class="visual-spark spark-3"></div>
+                <div class="visual-spark spark-4"></div>
+                <div class="visual-spark spark-5"></div>
+                <div class="visual-spark spark-6"></div>
+
+                <!-- 角色舞台 -->
+                <div class="character-wrap">
+                    <div class="character-glow"></div>
+                    <img src="/static/images/login-character-cutout.png?v=2" class="login-image" alt="电影角色">
+                </div>
+
+                <!-- 文案 -->
+                <h1>MovieRec</h1>
+                <p>智能电影推荐系统</p>
+                <div class="visual-description">
+                    根据你的评分与观影偏好，<br>
+                    发现下一部值得熬夜观看的好电影。
+                </div>
+                <div class="movie-icons">
+                    <span>🍿</span><span>🎞️</span><span>⭐</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧表单 -->
+        <div class="login-right">
+            <div class="login-form-box">
+                <div class="auth-title">
+                    <h2>欢迎回来 👋</h2>
+                    <p>登录后继续你的电影之旅</p>
+                </div>
+
+                {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+
+                <form method="post">
+                    <div class="auth-field">
+                        <label>用户名</label>
+                        <input type="text" name="username" placeholder="请输入用户名" required autocomplete="username">
+                    </div>
+
+                    <div class="auth-field">
+                        <div class="password-label">
+                            <label>密码</label>
+                            <a href="/forgot-password" class="forgot-link">忘记密码？</a>
+                        </div>
+                        <input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password">
+                    </div>
+
+                    <button type="submit" class="auth-main-button">登录</button>
+                </form>
+
+                <a href="/guest" class="guest-button">🎭 以游客身份快速体验</a>
+
+                <div class="auth-switch">
+                    还没有账户？<a href="/register">立即注册</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
